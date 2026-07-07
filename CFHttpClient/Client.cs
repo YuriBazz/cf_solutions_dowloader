@@ -24,6 +24,11 @@ internal class Client
             Console.Error.WriteLine("groupCode and contestId were absent");
             throw new ArgumentException();
         }
+
+        _httpClient = new()
+        {
+            BaseAddress = new Uri(CFApi.ApiBase),
+        };
     }
 
 
