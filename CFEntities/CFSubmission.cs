@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace CF_Solution_Downloader.CFEntities;
 
-internal class CFSubmission
+internal record CFSubmission
 {
     [JsonRequired] public long Id { get; init; }
 

@@ -1,6 +1,6 @@
 namespace CF_Solution_Downloader.CFEntities;
 
-internal class CFParty
+internal record CFParty
 {
     
 }
