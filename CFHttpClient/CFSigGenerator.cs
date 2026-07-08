@@ -1,3 +1,4 @@
+using System.Resources;
 using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Schema;
@@ -50,15 +51,16 @@ internal static class CFSigGenerator
 
         StringBuilder resultOptions = new();
 
+        (string param, string value) temp = ("lang", "ru"); 
+        // TODO: даже если там нет имени на русском, валидный ответ придет на англицком.
+        
         resultOptions.Append(methodName);
         resultOptions.Append('?');
+        resultOptions.AppendJoin('&', responsible.GetResponsePairs().Append(temp).Order(new CFApiComparator()).Select(x => x.param +"="+x.value));
         
         StringBuilder optionWithSecret = new();
         optionWithSecret.Append(resultOptions);
-        
-        // TODO: Протестить, важен ли им порядок (скорее всего нет, а тогда можно будет не париться с этой лажей)
-        resultOptions.AppendJoin('&', responsible.GetResponsePairs().Select(x => x.param +"="+x.value));
-        optionWithSecret.AppendJoin('&', responsible.GetResponsePairs().Order(new CFApiComparator()).Select(x =>x.param +"="+x.value));
+
         
         optionWithSecret.Append('#');
         optionWithSecret.Append(apiSecret);
@@ -67,8 +69,6 @@ internal static class CFSigGenerator
         resultOptions.Append("&apiSig=");
         resultOptions.Append(randomBegin);
         resultOptions.Append(hash);
-        string result = resultOptions.ToString();
-        Console.WriteLine(result);
-        return result;
+        return resultOptions.ToString();
     }
 }

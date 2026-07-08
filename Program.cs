@@ -7,7 +7,7 @@ internal static class Program
         var client = new CFHttpClient.Client("YuriBazz", "",
             "", null, 12142);
 
-        var test = client.GetUserStatusAsync(1, 3, false).Result;
+        var test = client.GetUserStatusAsync(1, 1, false).Result;
         if (test is null)
         {
             Console.WriteLine("Returned null");
