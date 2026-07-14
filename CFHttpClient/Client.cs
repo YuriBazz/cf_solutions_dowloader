@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CF_Solution_Downloader.CFEntities;
 using CF_Solution_Downloader.CFHttpClient.Api;
+using CF_Solution_Downloader.CFHttpClient.Api.Requests;
 
 namespace CF_Solution_Downloader.CFHttpClient;
 
@@ -11,45 +12,39 @@ internal class Client
     {
         BaseAddress = new Uri(CFApi.ApiBase),
     };
-
+    
+    private readonly bool _authorised;
     private readonly string _handle;
     private readonly string _apiKey;
     private readonly string _apiSecret;
-    private readonly HashSet<long> _ids;
 
-    public Client(string handle, string apiKey, string apiSecret, List<string>? groupCodes, List<long>? contestIds)
+    public Client(string handle = null, string apiKey = null, string apiSecret = null)
     {
         (_handle, _apiKey, _apiSecret) = (handle, apiKey, apiSecret);
-        if (groupCodes is null && contestIds is null)
-        {
-            Console.Error.WriteLine("groupCode and contestId were absent");
-            throw new ArgumentException();
-        }
-
-        _ids = new();
-        if (contestIds is not null)
-        {
-            foreach (var contestId in contestIds)
-            {
-                _ids.Add(contestId);
-            }
-        }
+        _authorised = _handle is not null;
+        HealthCheck();
     }
 
-    private async Task<JsonArray?> GetAsync(string optionsString)
+    private void HealthCheck()
+    {
+        
+    }
+
+
+    private async Task<CFResponse<ResponseType>> GetAsync<ResponseType>(string optionsString)
     {
         using HttpResponseMessage responseMessage = await _httpClient.GetAsync(optionsString);
         
         try
         {
             responseMessage.EnsureSuccessStatusCode();
-
-            var jsonNode = JsonNode.Parse(await responseMessage.Content.ReadAsStringAsync());
-            return CFResponseParser.ParseCfResponseJson(jsonNode);
+            var json = await responseMessage.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<CFResponse<ResponseType>>(json, JsonOptions.Options);
         }
         catch (HttpRequestException httpRequestException)
         {
             await Console.Error.WriteLineAsync($"CodeForces returned {responseMessage.StatusCode}");
+            await Console.Error.WriteLineAsync(httpRequestException.Message);
             // TODO: Logging for httpRequestException
         }
         catch (Exception exception)
@@ -61,15 +56,48 @@ internal class Client
         return null;
     }
 
-    private async Task<JsonArray?> GetUserStatusAsync(long from, long count, bool includeSources)
+    private async Task<CFResponse<CFSubmission>> GetUserStatusAsync(long from, long count, bool includeSources)
     {
-        var userStatus = new CFUserStatus(_handle, _apiKey, from, count, includeSources);
-        return await GetAsync(CFSigGenerator.GetSignedApiCall(CFApi.UserStatusMethod, userStatus, _apiSecret));
+        if (!_authorised)
+        {
+            throw new InvalidOperationException("User have to be authorised");
+        }
+        var userStatus = new CFAuthorisedRequest(_handle, _apiKey, new CFUserStatusRequest(from, count, includeSources));
+        return await GetAsync<CFSubmission>(CFSigGenerator.GetSignedApiCall(CFApi.UserStatusMethod, userStatus, _apiSecret));
     }
 
     public List<CFSubmission>? GetUSerSubmissions(long from, long count = 100, bool includeSources = true)
     {
-        var jsonArray = GetUserStatusAsync(from, count, includeSources).Result;
-        return jsonArray.Deserialize<List<CFSubmission>>(JsonOptions.Options);
+        try
+        {
+            var response = GetUserStatusAsync(from, count, includeSources).Result;
+            return response.Result;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine(exception.Message);
+        }
+
+        return null;
+    }
+
+    public List<CFSubmission>? GetAllUserSubmissions(bool includeSources = true)
+    {
+        List<CFSubmission> result = new();
+        int expectedSize = 100, actualSize = 100, start = 1;
+        while (expectedSize == actualSize)
+        {
+            var currentList = GetUSerSubmissions(1, expectedSize, includeSources);
+            if (currentList is null)
+            {
+                Console.Error.WriteLine("Can't get submissions");
+                return null;
+            }
+            actualSize = currentList.Count;
+            result.AddRange(currentList);
+            start += actualSize;
+        }
+
+        return result;
     }
 }

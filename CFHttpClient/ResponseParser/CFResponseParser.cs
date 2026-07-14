@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CF_Solution_Downloader.CFEntities;
 
 namespace CF_Solution_Downloader.CFHttpClient;
 
@@ -11,9 +12,9 @@ internal static class CFResponseParser
         var jsonObject = (JsonObject)jsonNode;
         var statusNode = jsonObject["status"];
         if (statusNode is null) throw new JsonException($"{nameof(statusNode)} was null");
-        var statusValue = ((JsonValue)statusNode).GetValue<string>();
+        var statusValue = ((JsonValue)statusNode).GetValue<CFResponseStatus>();
 
-        if (statusValue != "OK")
+        if (statusValue == CFResponseStatus.FAILED)
         {
             var commentNode = jsonObject["comment"];
             if (commentNode is null) throw new JsonException($"{nameof(commentNode)} wa null");
