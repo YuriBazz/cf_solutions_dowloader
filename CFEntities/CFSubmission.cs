@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using CF_Solution_Downloader.CFHttpClient;
 
 namespace CF_Solution_Downloader.CFEntities;
 
@@ -16,5 +17,7 @@ internal record CFSubmission
     public CFSubmissionVerdict? Verdict { get; init; }
     public string? TestSet { get; init; }
     public long? ContestId { get; init; }
-    public string? SourceBase64 { get; init; }
+    [JsonPropertyName("SourceBase64")]
+    [JsonConverter(typeof(SourceCodeConverter))]
+    public string? Source { get; init; }
 }

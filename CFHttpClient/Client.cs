@@ -21,7 +21,7 @@ internal class Client
     public Client(string handle = null, string apiKey = null, string apiSecret = null)
     {
         (_handle, _apiKey, _apiSecret) = (handle, apiKey, apiSecret);
-        _authorised = _handle is not null;
+        _authorised = _handle is not null && _apiKey is not null && _apiSecret is not null;
         HealthCheck();
     }
 
@@ -60,7 +60,7 @@ internal class Client
     {
         if (!_authorised)
         {
-            throw new InvalidOperationException("User have to be authorised");
+            throw new InvalidOperationException("User has to be authorised");
         }
         var userStatus = new CFAuthorisedRequest(_handle, _apiKey, new CFUserStatusRequest(from, count, includeSources));
         return await GetAsync<CFSubmission>(CFSigGenerator.GetSignedApiCall(CFApi.UserStatusMethod, userStatus, _apiSecret));
@@ -71,6 +71,11 @@ internal class Client
         try
         {
             var response = GetUserStatusAsync(from, count, includeSources).Result;
+            if (response.Status != CFResponseStatus.OK)
+            {
+                Console.Error.WriteLine(response.Comment);
+                return null;
+            }
             return response.Result;
         }
         catch (Exception exception)
@@ -100,4 +105,7 @@ internal class Client
 
         return result;
     }
+    
+    
+    public IEnumerable<CFSubmission> Get() {yield break;}
 }
